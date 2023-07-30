@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Type {
+  HOUSE
+  CONDO
+  TOWNHOUSE
+}
+
+enum userType{
+  ADMIN
+  USER
+  REALTOR
+}
+
+
+model Home{
+  id                  Int @id @default(autoincrement())
+  address             String
+  bedrooms            Int
+  bathrooms           Int
+  price               Float
+  sqft                Float
+  city                String
+  listingDate         DateTime @default(now())
+  type                Type 
+  images              Image[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt 
+  realtorIds          Int
+  realtor             User @relation(fields: [realtorIds], references: [id])
+  messages            Message[] 
+
+}
+
+model Image{
+  imageId             Int @id @default(autoincrement())
+  url                 String
+  homeId              Int
+  home                Home @relation(fields: [homeId], references: [id])
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model User {
+  id                  Int @id @default(autoincrement())
+  email               String @unique
+  name                String?
+  password            String
+  role                userType
+  phone               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt 
+  sent_messages       Message[] @relation("SentMessages")
+  recieved_messages   Message[] @relation("ReceivedMessages")
+  homes               Home[]
+}
+
+model Message{
+  id                  Int @id @default(autoincrement())
+  message             String
+  senderId            Int
+  recieverId          Int
+  sender              User @relation("SentMessages", fields: [senderId], references: [id])
+  reciever            User @relation("ReceivedMessages", fields: [recieverId], references: [id])
+  homeId              Int
+  home                Home @relation(fields: [homeId], references: [id])
+}
