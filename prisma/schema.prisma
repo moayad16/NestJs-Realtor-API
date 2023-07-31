@@ -10,7 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Type {
+enum PropertyType {
   HOUSE
   CONDO
   TOWNHOUSE
@@ -32,8 +32,8 @@ model Home{
   sqft                Float
   city                String
   listingDate         DateTime @default(now())
-  type                Type 
-  images              Image[]
+  type                PropertyType 
+  images              Image[] 
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt 
   realtorIds          Int
@@ -46,7 +46,7 @@ model Image{
   imageId             Int @id @default(autoincrement())
   url                 String
   homeId              Int
-  home                Home @relation(fields: [homeId], references: [id])
+  home                Home @relation(fields: [homeId], references: [id], onDelete: Cascade)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 }

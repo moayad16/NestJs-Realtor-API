@@ -22,8 +22,8 @@ export class AuthService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async signUp({ email, password, name, phone }: SignUpParams, UserType: userType) {
-
-    if (this.prismaService.user.findUnique({ where: { email } }) !== null) {
+    
+    if (await this.prismaService.user.findUnique({ where: { email } }) !== null) {
       return new HttpException('Email is already in use', HttpStatus.BAD_REQUEST);
     }
     else {
