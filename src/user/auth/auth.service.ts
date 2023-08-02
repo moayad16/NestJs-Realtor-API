@@ -22,12 +22,14 @@ export class AuthService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async signUp({ email, password, name, phone }: SignUpParams, UserType: userType) {
+
+    let user = {}
     
     if (await this.prismaService.user.findUnique({ where: { email } }) !== null) {
       return new HttpException('Email is already in use', HttpStatus.BAD_REQUEST);
     }
     else {
-        await this.prismaService.user.create({
+        user = await this.prismaService.user.create({
             data: {
                 email,
                 password: await bcrypt.hash(password, 10),
@@ -38,7 +40,9 @@ export class AuthService {
         })
     }
 
-    const token = jwt.sign({ email, name }, process.env.JWT_SECRET, {
+    const id = user['id']
+
+    const token = jwt.sign({ email, name, id }, process.env.JWT_SECRET, {
         expiresIn: '1d',
     });
 
@@ -64,7 +68,7 @@ export class AuthService {
             throw new HttpException('Invalid Credentials', 400);
         }
 
-        const token = jwt.sign({ email, name: user.name }, process.env.JWT_SECRET, {
+        const token = jwt.sign({ email, name: user.name, id: user.id }, process.env.JWT_SECRET, {
             expiresIn: '1d',
         });
 

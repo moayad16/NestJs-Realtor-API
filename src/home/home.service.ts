@@ -1,6 +1,6 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { homeResponseDto, updateHomeDto } from './dtos/home.dto';
+import { homeResponseDto, messageDto, updateHomeDto } from './dtos/home.dto';
 import { queryDto } from './dtos/query.dto';
 import { PropertyType } from '@prisma/client';
 
@@ -66,7 +66,10 @@ export class HomeService {
     });
   }
 
-  getHomeById(id: number): Promise<homeResponseDto> {
+  async getHomeById(id: number): Promise<homeResponseDto> {
+
+    if(!id) throw new HttpException('No home found', 404)
+    
     let home = this.prismaService.home.findUnique({
       where: {
         id: id,
@@ -79,6 +82,7 @@ export class HomeService {
         type: true,
         bedrooms: true,
         bathrooms: true,
+        realtorIds: true,
         images: {
           select: {
             url: true,
@@ -97,18 +101,18 @@ export class HomeService {
     });
   }
 
-  async createHome(body: createHomeParams) {
+  async createHome(body: createHomeParams, userId: number) {
     const home = await this.prismaService.home.create({
       data: {
         ...body,
         realtor: {
-            connect: {
-                id: 3,
-            }
+          connect: {
+            id: userId,
+          },
         },
         images: {
-            create: body.images,
-        }
+          create: body.images,
+        },
       },
     });
 
@@ -122,48 +126,115 @@ export class HomeService {
     });
 
     return Promise.all(homeImages).then(() => {
-        return {...home, images: body.images};
-        }
-    );
+      return { ...home, images: body.images };
+    });
   }
 
-  async updateHome(body: updateHomeDto, id: number) {
-
-    let home = {}
+  async updateHome(body: updateHomeDto, id: number, userId: number) {
+    let home = {};
 
     try {
-        home = await this.prismaService.home.update({
-            where: {
-                id: id,
-            },
-            data: {
-                ...body,
-            },
-        });
-    }
-    catch (error) {
-        throw new HttpException('No home found', 404);
+      home = await this.prismaService.home.update({
+        where: {
+          id: id,
+          realtorIds: userId ? userId : undefined,
+        },
+        data: {
+          ...body,
+        },
+      });
+    } catch (error) {
+      throw new HttpException('Something Went Wrong', 404);
     }
     return home;
-    
   }
 
-  async deleteHome(id: number) {
-
-    let home = {}
-
+  async deleteHome(id: number, userId: number) {
     try {
-        home = await this.prismaService.home.delete({
-            where: {
-                id: id,
-            },
-        });
-    }
-    catch (error) {
-        throw new HttpException('No home found', 404);
+      await this.prismaService.home.delete({
+        where: {
+          id: id,
+          realtorIds: userId,
+        },
+      });
+    } catch (error) {
+      throw new HttpException('No home found', 404);
     }
 
     return new HttpException('Home deleted successfully', 200);
+  }
 
+  async inquire(homeId: number, message: string, userId: number) {
+    const realtor = await this.prismaService.home.findUnique({
+      where: {
+        id: homeId,
+      },
+      select: {
+        realtor: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    if (!realtor) throw new HttpException('No home found', 404);
+    console.log(realtor.realtor.id);
+
+    const messageObj = await this.prismaService.message.create({
+      data: {
+        message: message,
+        home: {
+          connect: {
+            id: homeId,
+          },
+        },
+        sender: {
+          connect: {
+            id: userId,
+          },
+        },
+        reciever: {
+          connect: {
+            id: realtor.realtor.id,
+          },
+        },
+      },
+    });
+
+    console.log(messageObj);
+
+    return 'Message sent';
+  }
+
+
+
+  async getInquiries (userId: number, homeId: number) {    
+    
+    const home = await this.getHomeById(parseInt(homeId['id']));
+
+    if(home.realtorIds !== userId) throw new UnauthorizedException('You are not authorized to view this resource')
+    
+    const messages = await this.prismaService.message.findMany({
+        where: {
+            homeId: home['id'],
+            recieverId: userId,
+        },
+        select: {
+            message: true,
+            sender: {
+                select: {
+                    name: true,
+                    email: true,
+                    phone: true,
+                }
+            }
+        }
+    })
+
+    return messages;
   }
 }
+

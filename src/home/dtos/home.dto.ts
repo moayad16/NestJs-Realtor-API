@@ -29,7 +29,7 @@ export class homeResponseDto {
   createdAt: Date;
   @Exclude()
   updatedAt: Date;
-  @Exclude()
+  // @Exclude()
   realtorIds: number;
 
   image: string;
@@ -115,5 +115,11 @@ export class updateHomeDto {
   @IsEnum(PropertyType)
   @IsOptional()
   type?: PropertyType;
+}
+
+export class messageDto {
+    @IsString()
+    @IsNotEmpty()
+    message: string;
 }
 
